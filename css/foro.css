@@ -1,0 +1,301 @@
+/* ESTILOS DEL FORO COMUNITARIO */
+.forum-main {
+    min-height: calc(100vh - 80px);
+    padding: 2rem;
+    background: var(--color-bg-primary);
+}
+
+.forum-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.forum-header {
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeInUp 0.5s ease;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.header-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--gradient-secondary);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-icon svg {
+    width: 40px;
+    height: 40px;
+    color: white;
+}
+
+.post-form-container {
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.4s ease;
+}
+
+.post-form-card {
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    padding: 2.5rem;
+    box-shadow: var(--shadow-xl);
+}
+
+.char-counter {
+    text-align: right;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+}
+
+.forum-filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    animation: fadeInUp 0.6s ease;
+}
+
+.filter-select {
+    flex: 1;
+    padding: 1rem 1.25rem;
+    border: 2px solid var(--color-bg-tertiary);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.filter-select:hover {
+    border-color: var(--color-primary);
+}
+
+.posts-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.post-card {
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-base);
+    border-left: 4px solid transparent;
+}
+
+.post-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+.post-card.cat-stress { border-left-color: #6B7FD7; }
+.post-card.cat-anxiety { border-left-color: #7BC9A6; }
+.post-card.cat-motivation { border-left-color: #FFB84D; }
+.post-card.cat-relationships { border-left-color: #FF9B9B; }
+.post-card.cat-selfcare { border-left-color: #A78BFA; }
+.post-card.cat-success { border-left-color: #7BC9A6; }
+.post-card.cat-general { border-left-color: #8A9BAD; }
+
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.post-author {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.author-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.125rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.author-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.author-name {
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.post-date {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.post-category {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+}
+
+.post-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+}
+
+.post-content {
+    color: var(--color-text-secondary);
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+}
+
+.post-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-bg-tertiary);
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+
+.action-btn:hover {
+    background: var(--color-bg-tertiary);
+    transform: translateY(-2px);
+}
+
+.action-btn.active {
+    background: var(--color-accent);
+    color: white;
+}
+
+.comments-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-bg-tertiary);
+}
+
+.comment-input-wrapper {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.comment-input-wrapper .author-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.875rem;
+}
+
+.comment-input {
+    flex: 1;
+    padding: 0.875rem 1rem;
+    border: 2px solid var(--color-bg-tertiary);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-secondary);
+    font-family: var(--font-body);
+    transition: all var(--transition-base);
+}
+
+.comment-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: var(--color-surface);
+}
+
+.comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.comment {
+    display: flex;
+    gap: 1rem;
+}
+
+.comment .author-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.875rem;
+}
+
+.comment-content {
+    flex: 1;
+}
+
+.comment-header {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.comment-date {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.comment-text {
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .forum-header {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: flex-start;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .forum-filters {
+        flex-direction: column;
+    }
+}
