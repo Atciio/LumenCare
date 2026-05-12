@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ override: false });
 const express      = require("express");
 const mysql        = require("mysql2/promise");
 const path         = require("path");
