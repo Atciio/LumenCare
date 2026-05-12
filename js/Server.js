@@ -23,19 +23,7 @@ app.use(helmet({
 app.use(compression());
 
 // CORS — en producción solo acepta peticiones del propio dominio
-const allowedOrigins = IS_PROD
-  ? [process.env.APP_URL || "https://tu-app.railway.app"]
-  : ["http://localhost:3030", "http://127.0.0.1:3030"];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // Permitir peticiones sin origen (Postman, curl) solo en desarrollo
-    if (!origin && !IS_PROD) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error("CORS: origen no permitido"));
-  },
-  credentials: true
-}));
+app.use(cors());
 
 // Confiar en el proxy de Railway/Render para leer la IP real
 app.set("trust proxy", 1);
