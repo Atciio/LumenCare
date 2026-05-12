@@ -504,6 +504,10 @@ button { font-family: var(--font-body); cursor: pointer; border: none; outline: 
     /* Ocultar menú de escritorio */
     .nav-menu { display: none; }
 
+    /* Ocultar botones de Ingresar/Registrarse en la nav —
+       en móvil el usuario accede desde el hero */
+    .auth-buttons { display: none; }
+
     /* Nav más compacto */
     .nav-container { padding: 0.75rem 1rem; gap: 0.5rem; }
     .nav-brand     { font-size: 1.2rem; }
@@ -513,14 +517,14 @@ button { font-family: var(--font-body); cursor: pointer; border: none; outline: 
     .user-name { display: none; }
 
     /* user-info más compacto */
-    .user-info { padding: 0.4rem 0.75rem; gap: 0.5rem; }
+    .user-info  { padding: 0.4rem 0.75rem; gap: 0.5rem; }
     .user-avatar { width: 32px; height: 32px; font-size: 0.85rem; }
-    .btn-logout { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+    .btn-logout  { padding: 0.5rem 0.75rem; font-size: 0.8rem; }
 
     /* Mostrar barra de navegación inferior */
     .mobile-nav { display: flex; }
 
-    /* Agregar padding inferior para que el contenido no quede bajo la barra */
+    /* Padding inferior para que el contenido no quede bajo la barra */
     body { padding-bottom: var(--mobile-nav-height); }
 
     /* Toast a ancho completo en móvil */

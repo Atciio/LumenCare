@@ -424,7 +424,10 @@
         padding-top: 2rem;
     }
 
-    .hero-cta { flex-direction: column; }
+    .hero-cta {
+        flex-direction: column;
+        align-items: center;
+    }
     .hero-cta .btn { width: 100%; justify-content: center; }
 
     .features-section,
