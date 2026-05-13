@@ -1,4 +1,4 @@
-require("dotenv").config({ override: false });
+require("dotenv").config();
 const express      = require("express");
 const mysql        = require("mysql2/promise");
 const path         = require("path");
@@ -23,7 +23,19 @@ app.use(helmet({
 app.use(compression());
 
 // CORS — en producción solo acepta peticiones del propio dominio
-app.use(cors());
+const allowedOrigins = IS_PROD
+  ? [process.env.APP_URL || "https://tu-app.railway.app"]
+  : ["http://localhost:3030", "http://127.0.0.1:3030"];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permitir peticiones sin origen (Postman, curl) solo en desarrollo
+    if (!origin && !IS_PROD) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error("CORS: origen no permitido"));
+  },
+  credentials: true
+}));
 
 // Confiar en el proxy de Railway/Render para leer la IP real
 app.set("trust proxy", 1);
@@ -496,4 +508,124 @@ const PORT = process.env.PORT || 3030;
 app.listen(PORT, () => {
   console.log(`🚀 LumenCare corriendo en http://localhost:${PORT}`);
   console.log(`   Modo: ${IS_PROD ? "PRODUCCIÓN" : "DESARROLLO"}`);
+});
+
+
+// ─── CONVERSACIONES Y MENSAJES (Chatbot) ─────────────────────────────────────
+
+// CREAR conversación
+app.post("/api/conversaciones", authMiddleware, async (req, res) => {
+  try {
+    const { titulo } = req.body;
+    const boleta     = req.user.boleta;
+    const [result]   = await db.query(
+      `INSERT INTO conversaciones (boleta, titulo) VALUES (?, ?)`,
+      [boleta, titulo?.trim() || 'Nueva conversación']
+    );
+    return res.json({ success: true, id_conversacion: result.insertId });
+  } catch (err) {
+    console.error("❌ POST /api/conversaciones:", err.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
+  }
+});
+
+// OBTENER todas las conversaciones del usuario
+app.get("/api/conversaciones", authMiddleware, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id_conversacion, titulo, fecha_creacion, fecha_update
+       FROM conversaciones WHERE boleta = ?
+       ORDER BY fecha_update DESC, fecha_creacion DESC`,
+      [req.user.boleta]
+    );
+    return res.json({ success: true, conversaciones: rows });
+  } catch (err) {
+    console.error("❌ GET /api/conversaciones:", err.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
+  }
+});
+
+// ACTUALIZAR título de conversación
+app.put("/api/conversaciones/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { titulo } = req.body;
+    const boleta     = req.user.boleta;
+    const [check]    = await db.query(
+      "SELECT id_conversacion FROM conversaciones WHERE id_conversacion=? AND boleta=?", [id, boleta]
+    );
+    if (check.length === 0) return res.status(403).json({ success: false, message: "Sin permiso" });
+    await db.query(
+      "UPDATE conversaciones SET titulo=? WHERE id_conversacion=? AND boleta=?",
+      [titulo?.trim(), id, boleta]
+    );
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("❌ PUT /api/conversaciones:", err.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
+  }
+});
+
+// ELIMINAR conversación (y sus mensajes en cascada)
+app.delete("/api/conversaciones/:id", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const boleta  = req.user.boleta;
+    const [check] = await db.query(
+      "SELECT id_conversacion FROM conversaciones WHERE id_conversacion=? AND boleta=?", [id, boleta]
+    );
+    if (check.length === 0) return res.status(403).json({ success: false, message: "Sin permiso" });
+    await db.query("DELETE FROM conversaciones WHERE id_conversacion=? AND boleta=?", [id, boleta]);
+    return res.json({ success: true, message: "Conversación eliminada" });
+  } catch (err) {
+    console.error("❌ DELETE /api/conversaciones:", err.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
+  }
+});
+
+// OBTENER mensajes de una conversación
+app.get("/api/conversaciones/:id/mensajes", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const boleta  = req.user.boleta;
+    const [check] = await db.query(
+      "SELECT id_conversacion FROM conversaciones WHERE id_conversacion=? AND boleta=?", [id, boleta]
+    );
+    if (check.length === 0) return res.status(403).json({ success: false, message: "Sin permiso" });
+    const [mensajes] = await db.query(
+      `SELECT id_mensaje, rol, contenido, fecha_mensaje
+       FROM mensajes WHERE id_conversacion=? ORDER BY fecha_mensaje ASC`,
+      [id]
+    );
+    return res.json({ success: true, mensajes });
+  } catch (err) {
+    console.error("❌ GET mensajes:", err.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
+  }
+});
+
+// GUARDAR mensaje en una conversación
+app.post("/api/conversaciones/:id/mensajes", authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rol, contenido } = req.body;
+    const boleta = req.user.boleta;
+
+    if (!['user','bot'].includes(rol) || !contenido?.trim())
+      return res.status(400).json({ success: false, message: "Datos inválidos" });
+
+    const [check] = await db.query(
+      "SELECT id_conversacion FROM conversaciones WHERE id_conversacion=? AND boleta=?", [id, boleta]
+    );
+    if (check.length === 0) return res.status(403).json({ success: false, message: "Sin permiso" });
+
+    const [result] = await db.query(
+      "INSERT INTO mensajes (id_conversacion, rol, contenido) VALUES (?,?,?)",
+      [id, rol, contenido.trim()]
+    );
+    return res.json({ success: true, id_mensaje: result.insertId });
+  } catch (err) {
+    console.error("❌ POST mensajes:", err.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
+  }
 });

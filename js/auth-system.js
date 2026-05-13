@@ -67,6 +67,9 @@ const AuthSystem = {
             // Limpiar bandera de cierre por inactividad
             sessionStorage.removeItem('lumencare_inactivity_logout');
 
+            // Actualizar nav inmediatamente sin recargar
+            window.dispatchEvent(new CustomEvent('authStateChanged'));
+
             return { success: true, message: "Sesión iniciada", user: data.user };
         } catch {
             return { success: false, message: "Error conectando con el servidor" };
@@ -77,6 +80,8 @@ const AuthSystem = {
         InactivityManager.stop();
         DataManager.remove("token");
         DataManager.remove("user");
+        // Actualizar nav inmediatamente
+        window.dispatchEvent(new CustomEvent('authStateChanged'));
         return { success: true, message: "Sesión cerrada" };
     },
 
@@ -444,9 +449,29 @@ window.InactivityManager = InactivityManager;
 window.DataManager       = DataManager;
 window.Utils             = Utils;
 
+// ─── ACTUALIZAR NAV SEGÚN ESTADO DE AUTH ─────────────────────────────────────
+// Agrega/quita la clase .user-authenticated del body.
+// El CSS usa esa clase para mostrar u ocultar los enlaces de nav protegidos.
+// Se llama automáticamente al cargar, al iniciar sesión y al cerrar sesión.
+
+function updateAuthNav() {
+    const isAuth = AuthSystem.isAuthenticated();
+    document.body.classList.toggle('user-authenticated', isAuth);
+}
+
+window.updateAuthNav = updateAuthNav;
+
+// Escuchar el evento personalizado de cambio de auth
+window.addEventListener('authStateChanged', updateAuthNav);
+
+
+
 // ─── DOM READY ────────────────────────────────────────────────────────────────
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    // Actualizar nav al cargar la página
+    updateAuthNav();
 
     // ── Mostrar aviso si la sesión anterior se cerró por inactividad ─────────
     if (sessionStorage.getItem('lumencare_inactivity_logout') === '1') {
