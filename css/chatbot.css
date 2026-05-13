@@ -617,9 +617,12 @@
     .welcome-suggestions { grid-template-columns: 1fr; }
     .welcome-avatar { width: 64px; height: 64px; }
 
-    /* Input */
-    .chat-input-area { padding: 0.75rem 1rem 1rem; }
-    .message-input   { font-size: 0.9rem; }
+    /* Input — padding extra para que no quede bajo la barra móvil */
+    .chat-input-area {
+        padding: 0.75rem 1rem;
+        padding-bottom: calc(var(--mobile-nav-height) + 0.5rem);
+    }
+    .message-input { font-size: 0.9rem; }
 }
 
 @media (max-width: 480px) {
