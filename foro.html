@@ -113,6 +113,32 @@
                             </div>
                         </div>
 
+
+                        <div class="form-group">
+                            <label>Imagen (opcional)</label>
+                            <div class="image-upload-area" id="imageUploadArea">
+                                <input type="file" id="postImage" accept="image/*" class="image-input" onchange="previewImage(this)">
+                                <div class="image-upload-placeholder" id="imagePlaceholder">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <polyline points="21 15 16 10 5 21"/>
+                                    </svg>
+                                    <p>Haz clic o arrastra una imagen aquí</p>
+                                    <span>JPG, PNG, GIF — máx. 5MB</span>
+                                </div>
+                                <div class="image-preview hidden" id="imagePreview">
+                                    <img id="previewImg" src="" alt="Vista previa">
+                                    <button type="button" class="image-remove-btn" onclick="removeImage()">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                            <line x1="18" y1="6" x2="6" y2="18"/>
+                                            <line x1="6" y1="6" x2="18" y2="18"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-actions">
                             <button type="button" class="btn btn-secondary" id="btnCancelPost">
                                 Cancelar

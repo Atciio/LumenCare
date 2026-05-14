@@ -232,6 +232,87 @@
 .comment-text     { color: var(--color-text-secondary); line-height: 1.6; word-break: break-word; }
 
 
+
+/* ── SUBIDA DE IMAGEN EN EL FORMULARIO ──────────────────────────────────── */
+
+.image-upload-area {
+    border: 2px dashed var(--color-bg-tertiary);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-base);
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--color-bg-secondary);
+}
+.image-upload-area:hover,
+.image-upload-area.drag-over {
+    border-color: var(--color-primary);
+    background: rgba(107,127,215,0.04);
+}
+
+.image-input { display: none; }
+
+.image-upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+.image-upload-placeholder svg  { color: var(--color-primary-light); opacity: 0.7; }
+.image-upload-placeholder p    { font-size: 0.9rem; font-weight: 500; margin: 0; }
+.image-upload-placeholder span { font-size: 0.75rem; }
+
+.image-preview {
+    position: relative;
+}
+.image-preview img {
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    display: block;
+    border-radius: var(--radius-lg);
+}
+.image-remove-btn {
+    position: absolute;
+    top: 0.5rem; right: 0.5rem;
+    background: rgba(0,0,0,0.6);
+    border: none; border-radius: 50%;
+    width: 32px; height: 32px;
+    color: white; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--transition-fast);
+}
+.image-remove-btn:hover { background: rgba(255,80,80,0.85); }
+
+/* ── IMAGEN EN EL POST ───────────────────────────────────────────────────── */
+
+.post-image-wrapper {
+    margin: 0 0 1.25rem;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    /* Altura fija: todas las imágenes se ven igual de grandes */
+    height: 320px;
+    background: var(--color-bg-secondary);
+}
+.post-image {
+    width: 100%;
+    height: 100%;
+    /* cover: recorta la imagen para llenar el espacio sin deformarla */
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    cursor: zoom-in;
+    transition: transform 0.4s ease;
+}
+.post-image:hover { transform: scale(1.03); }
+
+@media (max-width: 768px) {
+    .post-image-wrapper { height: 220px; }
+}
+
 /* ── BADGE PROFESIONAL EN POSTS ──────────────────────────────────────────── */
 
 .post-prof-badge {
