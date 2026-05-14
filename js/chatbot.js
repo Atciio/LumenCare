@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', () => {
     currentUser = AuthSystem.getUser();
     if (!currentUser) { window.location.href = 'index.html'; return; }
 
+    // El asistente es solo para alumnos
+    if (currentUser.tipo_cuenta === 'profesional') {
+        window.location.href = 'profesional.html';
+        return;
+    }
+
     updateUserUI();
     setupEventListeners();
     loadConversations();
@@ -384,7 +390,7 @@ function appendMessage(rol, contenido, fecha = null) {
     msg.className = `message ${rol}`;
     msg.innerHTML = `
         <div class="message-avatar">${rol === 'bot' ? avatar : (currentUser?.avatar || 'U')}</div>
-        <div>
+        <div class="message-content">
             <div class="message-bubble">${Utils.escapeHtml(contenido)}</div>
             <div class="message-time">${time}</div>
         </div>

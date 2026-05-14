@@ -12,7 +12,6 @@
 </head>
 <body>
 
-    <!-- ── NAVEGACIÓN ─────────────────────────────────────────────────────── -->
     <nav class="main-nav">
         <div class="nav-container">
             <div class="nav-brand" onclick="window.location.href='index.html'">
@@ -24,14 +23,11 @@
                 </svg>
                 <span class="brand-name">LumenCare</span>
             </div>
-
             <ul class="nav-menu">
+                <li><a href="index.html"       class="nav-link">Inicio</a></li>
                 <li><a href="profesional.html" class="nav-link nav-link-pacientes active">Mis Pacientes</a></li>
-                <li><a href="diario.html"      class="nav-link">Mi Diario</a></li>
                 <li><a href="foro.html"        class="nav-link">Comunidad</a></li>
-                <li><a href="chatbot.html"     class="nav-link">Asistente</a></li>
             </ul>
-
             <div class="nav-actions">
                 <div class="user-info" id="userInfo">
                     <div class="prof-badge">
@@ -49,11 +45,9 @@
         </div>
     </nav>
 
-    <!-- ── CONTENIDO PRINCIPAL ───────────────────────────────────────────── -->
     <main class="prof-main">
         <div class="prof-container">
 
-            <!-- Header -->
             <header class="prof-header">
                 <div class="prof-header__info">
                     <div class="prof-header__icon">
@@ -78,8 +72,7 @@
                 </button>
             </header>
 
-            <!-- Stats rápidos -->
-            <div class="prof-stats" id="profStats">
+            <div class="prof-stats">
                 <div class="prof-stat-card">
                     <span class="prof-stat-num" id="statTotal">0</span>
                     <span class="prof-stat-label">Pacientes activos</span>
@@ -90,10 +83,8 @@
                 </div>
             </div>
 
-            <!-- Grid de pacientes -->
             <div class="patients-grid" id="patientsGrid"></div>
 
-            <!-- Estado vacío -->
             <div class="empty-state hidden" id="emptyState">
                 <div class="empty-icon">
                     <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -113,91 +104,148 @@
         </div>
     </main>
 
-    <!-- ══ MODAL: AGREGAR PACIENTE ════════════════════════════════════════════ -->
+    <!-- ══ MODAL: AGREGAR PACIENTE ══════════════════════════════════════════ -->
     <div class="modal hidden" id="modalAddPatient">
         <div class="modal-overlay" onclick="closeAddPatientModal()"></div>
         <div class="modal-content">
             <button class="modal-close" onclick="closeAddPatientModal()">&times;</button>
             <h2 class="modal-title">Agregar paciente</h2>
             <p class="modal-subtitle">Busca al alumno por boleta o correo institucional</p>
-
             <div class="search-patient-wrapper">
-                <input type="text" id="searchPatientInput"
-                       class="search-patient-input"
+                <input type="text" id="searchPatientInput" class="search-patient-input"
                        placeholder="Boleta o correo del alumno..."
                        oninput="onSearchPatient(this.value)">
                 <button class="btn btn-primary" onclick="searchPatient()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                     </svg>
                     Buscar
                 </button>
             </div>
-
-            <!-- Resultados de búsqueda -->
             <div id="searchResults" class="search-results"></div>
         </div>
     </div>
 
-    <!-- ══ MODAL: CALENDARIO DEL PACIENTE ════════════════════════════════════ -->
-    <div class="modal hidden" id="modalCalendar">
-        <div class="modal-overlay" onclick="closeCalendarModal()"></div>
+    <!-- ══ MODAL: DETALLE DEL PACIENTE (Calendario + Notas) ════════════════ -->
+    <div class="modal hidden" id="modalPaciente">
+        <div class="modal-overlay" onclick="closePacienteModal()"></div>
         <div class="modal-content modal-content--wide">
-            <button class="modal-close" onclick="closeCalendarModal()">&times;</button>
+            <button class="modal-close" onclick="closePacienteModal()">&times;</button>
 
-            <div class="cal-modal-header">
-                <div class="cal-modal-avatar" id="calModalAvatar">A</div>
+            <!-- Header del paciente -->
+            <div class="paciente-modal-header">
+                <div class="cal-modal-avatar" id="pacienteModalAvatar">A</div>
                 <div>
-                    <h2 class="modal-title" id="calModalName">Paciente</h2>
-                    <p class="modal-subtitle" id="calModalBoleta"></p>
+                    <h2 class="modal-title" id="pacienteModalNombre">Paciente</h2>
+                    <p class="modal-subtitle" id="pacienteModalBoleta"></p>
                 </div>
             </div>
 
-            <!-- Navegación del mes -->
-            <div class="calendar-nav" style="margin-bottom:1rem">
-                <button class="cal-nav-btn" id="calPrevMonth">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <polyline points="15 18 9 12 15 6"/>
+            <!-- Pestañas -->
+            <div class="modal-tabs">
+                <button class="modal-tab active" id="tabCalendario" onclick="switchTab('calendario')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
                     </svg>
+                    Calendario emocional
                 </button>
-                <h3 class="calendar-title" id="calModalTitle">Mayo 2026</h3>
-                <button class="cal-nav-btn" id="calNextMonth">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <polyline points="9 18 15 12 9 6"/>
+                <button class="modal-tab" id="tabNotas" onclick="switchTab('notas')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
                     </svg>
+                    Notas de consulta
                 </button>
             </div>
 
-            <div class="calendar-weekdays">
-                <span>Dom</span><span>Lun</span><span>Mar</span>
-                <span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span>
-            </div>
-
-            <div class="calendar-grid" id="calModalGrid"></div>
-
-            <div class="calendar-legend" style="margin-top:1rem">
-                <div class="legend-group">
-                    <span class="legend-label">Estado de ánimo:</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#1DB954"></span>Eufórico</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#7BC9A6"></span>Contento</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#C6DC6A"></span>Tranquilo</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#FFD93D"></span>Neutral</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#FFB347"></span>Ansioso</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#FF7043"></span>Frustrado</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#3B82F6"></span>Triste</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#9B59B6"></span>Solitario</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#E74C3C"></span>Agobiado</span>
-                    <span class="legend-item"><span class="legend-dot" style="background:#2C3E50;border:1px solid #555"></span>Desesperado</span>
+            <!-- ── TAB: CALENDARIO ─────────────────────────────────────── -->
+            <div class="tab-panel" id="panelCalendario">
+                <div class="calendar-nav" style="margin-bottom:1rem">
+                    <button class="cal-nav-btn" id="calPrevMonth">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <h3 class="calendar-title" id="calModalTitle">Mayo 2026</h3>
+                    <button class="cal-nav-btn" id="calNextMonth">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+                <div class="calendar-weekdays">
+                    <span>Dom</span><span>Lun</span><span>Mar</span>
+                    <span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span>
+                </div>
+                <div class="calendar-grid" id="calModalGrid"></div>
+                <div class="calendar-legend" style="margin-top:1rem">
+                    <div class="legend-group">
+                        <span class="legend-label">Estado de ánimo:</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#1DB954"></span>Eufórico</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#7BC9A6"></span>Contento</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#C6DC6A"></span>Tranquilo</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#FFD93D"></span>Neutral</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#FFB347"></span>Ansioso</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#FF7043"></span>Frustrado</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#3B82F6"></span>Triste</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#9B59B6"></span>Solitario</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#E74C3C"></span>Agobiado</span>
+                        <span class="legend-item"><span class="legend-dot" style="background:#2C3E50;border:1px solid #555"></span>Desesperado</span>
+                    </div>
                 </div>
             </div>
 
+            <!-- ── TAB: NOTAS ──────────────────────────────────────────── -->
+            <div class="tab-panel hidden" id="panelNotas">
+
+                <!-- Formulario nueva nota -->
+                <div class="nota-form" id="notaForm">
+                    <h4 class="nota-form__title" id="notaFormTitle">Nueva nota de consulta</h4>
+                    <input type="hidden" id="editingNotaId">
+                    <div class="nota-form__fields">
+                        <div class="form-group">
+                            <label for="notaFecha">Fecha de la consulta</label>
+                            <input type="date" id="notaFecha" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="notaContenido">Nota clínica</label>
+                            <textarea id="notaContenido" rows="4"
+                                      placeholder="Escribe los puntos clave de la consulta, observaciones, acuerdos con el paciente..."
+                                      required></textarea>
+                        </div>
+                    </div>
+                    <div class="nota-form__actions">
+                        <button class="btn btn-secondary" onclick="cancelarEdicionNota()">Cancelar</button>
+                        <button class="btn btn-primary" onclick="guardarNota()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                <polyline points="7 3 7 8 15 8"/>
+                            </svg>
+                            Guardar nota
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de notas -->
+                <div class="notas-list" id="notasList"></div>
+
+                <!-- Estado vacío de notas -->
+                <div class="notas-empty hidden" id="notasEmpty">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <p>Sin notas de consulta aún.<br>Registra la primera después de tu próxima sesión.</p>
+                </div>
+
+            </div>
         </div>
     </div>
 
-
-    <!-- ── NAVEGACIÓN MÓVIL PROFESIONAL (5 items) ─────────────────────── -->
-    <nav class="mobile-nav mobile-nav--prof" id="mobileNav">
+    <!-- Navegación móvil (4 items — sin Mi Diario) -->
+    <nav class="mobile-nav" id="mobileNav">
         <div class="mobile-nav__inner">
             <a href="index.html" class="mobile-nav__link">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -215,25 +263,11 @@
                 </svg>
                 Pacientes
             </a>
-            <a href="diario.html" class="mobile-nav__link">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                </svg>
-                Mi Diario
-            </a>
             <a href="foro.html" class="mobile-nav__link">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
                 Comunidad
-            </a>
-            <a href="chatbot.html" class="mobile-nav__link">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="8" r="4"/>
-                    <path d="M4 20v-1a8 8 0 0 1 16 0v1"/>
-                </svg>
-                Asistente
             </a>
         </div>
     </nav>

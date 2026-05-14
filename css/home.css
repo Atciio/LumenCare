@@ -80,10 +80,14 @@
 
 .hero-visual {
     position: relative;
-    height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
 }
 
-.floating-shapes { position: absolute; width: 100%; height: 100%; }
+/* Formas decorativas de fondo */
+.floating-shapes { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: var(--radius-xl); }
 
 .shape {
     position: absolute;
@@ -91,53 +95,66 @@
     opacity: 0.6;
     animation: float 6s ease-in-out infinite;
 }
-
 .shape-1 {
     width: 200px; height: 200px;
-    background: linear-gradient(135deg, rgba(107,127,215,0.2), rgba(139,159,232,0.1));
-    top: 10%; left: 10%;
+    background: linear-gradient(135deg, rgba(107,127,215,0.15), rgba(139,159,232,0.08));
+    top: 5%; left: 5%;
 }
 .shape-2 {
     width: 150px; height: 150px;
-    background: linear-gradient(135deg, rgba(123,201,166,0.2), rgba(159,217,192,0.1));
-    bottom: 20%; right: 15%;
+    background: linear-gradient(135deg, rgba(123,201,166,0.15), rgba(159,217,192,0.08));
+    bottom: 10%; right: 5%;
     animation-delay: 1s;
 }
 .shape-3 {
     width: 100px; height: 100px;
-    background: linear-gradient(135deg, rgba(255,155,155,0.2), rgba(255,201,165,0.1));
-    top: 50%; right: 5%;
+    background: linear-gradient(135deg, rgba(255,155,155,0.15), rgba(255,201,165,0.08));
+    top: 40%; right: 8%;
     animation-delay: 2s;
 }
 
-.feature-cards { position: relative; z-index: 2; }
+/* Las 3 cards en un grid centrado — siempre visibles */
+.feature-cards {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 1.25rem;
+    width: 100%;
+    max-width: 480px;
+}
 
 .feature-card {
     background: var(--color-surface);
     border-radius: var(--radius-xl);
-    padding: 2rem;
+    padding: 1.75rem 1.5rem;
     box-shadow: var(--shadow-lg);
     text-align: center;
-    position: absolute;
     transition: all var(--transition-slow);
 }
-.feature-card:hover { transform: translateY(-10px) scale(1.05); box-shadow: var(--shadow-xl), var(--shadow-glow); }
+.feature-card:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: var(--shadow-xl), var(--shadow-glow);
+}
 
-.card-1 {
-    width: 220px; top: 5%; left: 15%;
-    animation: fadeInUp 0.6s ease, float 4s ease-in-out 0.6s infinite;
-}
-.card-2 {
-    width: 240px; top: 45%; right: 10%;
-    animation: fadeInUp 0.8s ease, float 4s ease-in-out 0.8s infinite;
-}
+/* Card 1: columna izquierda, fila 1 */
+.card-1 { animation: fadeInUp 0.6s ease, float 4s ease-in-out 0.6s infinite; }
+
+/* Card 2: columna derecha, fila 1 */
+.card-2 { animation: fadeInUp 0.8s ease, float 4s ease-in-out 0.8s infinite; }
+
+/* Card 3: span de 2 columnas centrada, fila 2 */
 .card-3 {
-    width: 200px; bottom: 5%; left: 20%;
+    grid-column: 1 / -1;
+    max-width: 220px;
+    margin: 0 auto;
+    width: 100%;
     animation: fadeInUp 1s ease, float 4s ease-in-out 1s infinite;
 }
 
 .feature-card .card-icon {
-    width: 80px; height: 80px;
+    width: 72px; height: 72px;
     margin: 0 auto 1rem;
     border-radius: var(--radius-full);
     background: linear-gradient(135deg, rgba(107,127,215,0.1), rgba(123,201,166,0.1));
@@ -147,8 +164,8 @@
     transition: all var(--transition-base);
 }
 .feature-card:hover .card-icon { transform: rotate(10deg) scale(1.1); }
-.feature-card h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
-.feature-card p  { font-size: 0.875rem; color: var(--color-text-secondary); }
+.feature-card h3 { font-size: 1.1rem; margin-bottom: 0.4rem; }
+.feature-card p  { font-size: 0.82rem; color: var(--color-text-secondary); }
 
 /* ── FEATURES SECTION ───────────────────────────────────────────────────────── */
 

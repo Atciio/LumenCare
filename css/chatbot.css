@@ -425,13 +425,25 @@
 .message.bot  .message-avatar { background: var(--gradient-primary); color: white; }
 .message.user .message-avatar { background: var(--gradient-secondary); color: white; }
 
-.message-bubble {
+/* Wrapper del bubble — necesita flex:1 para que el bubble tenga espacio */
+.message-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
     max-width: 75%;
+}
+
+.message.user .message-content { align-items: flex-end; }
+.message.bot  .message-content { align-items: flex-start; }
+
+.message-bubble {
     padding: 0.875rem 1.125rem;
     border-radius: var(--radius-lg);
     line-height: 1.7;
     font-size: 0.95rem;
     word-break: break-word;
+    width: fit-content;
+    max-width: 100%;
 }
 
 .message.bot .message-bubble {
