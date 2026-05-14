@@ -52,6 +52,7 @@ function initDiaryPage() {
     setupEventListeners();
     loadUserEntries();
     fetchCalendarData();
+    loadMiProfesional();
 }
 
 function updateUserUI() {
@@ -64,6 +65,8 @@ function updateUserUI() {
 // ─── EVENTOS ─────────────────────────────────────────────────────────────────
 
 function setupEventListeners() {
+    document.getElementById('btnDesvincular')?.addEventListener('click', handleDesvincular);
+
     document.getElementById('btnLogout')?.addEventListener('click', () => {
         AuthSystem.logout(); window.location.href = 'index.html';
     });
@@ -618,6 +621,50 @@ function createEntryCard(entry) {
 
 function formatTime(dateStr) {
     return new Date(dateStr).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+}
+
+
+// ─── MI PROFESIONAL ASIGNADO ─────────────────────────────────────────────────
+
+async function loadMiProfesional() {
+    try {
+        const res  = await fetch('/api/alumno/mi-profesional', {
+            headers: { 'Authorization': `Bearer ${AuthSystem.getToken()}` }
+        });
+        const data = await res.json();
+
+        const card = document.getElementById('miProfesionalCard');
+        if (!card) return;
+
+        if (data.success && data.profesional) {
+            document.getElementById('profAsignadoNombre').textContent = data.profesional.nombre;
+            document.getElementById('profAsignadoEsp').textContent    = data.profesional.especialidad;
+            card.classList.remove('hidden');
+        } else {
+            card.classList.add('hidden');
+        }
+    } catch (err) {
+        console.warn('No se pudo cargar el profesional asignado:', err);
+    }
+}
+
+async function handleDesvincular() {
+    if (!confirm('¿Seguro que quieres desvincularte de tu profesional? Él ya no podrá ver tu calendario emocional.')) return;
+    try {
+        const res  = await fetch('/api/alumno/mi-profesional', {
+            method:  'DELETE',
+            headers: { 'Authorization': `Bearer ${AuthSystem.getToken()}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            Utils.showToast('Te desvinculaste de tu profesional', 'info');
+            document.getElementById('miProfesionalCard')?.classList.add('hidden');
+        } else {
+            Utils.showToast(data.message, 'error');
+        }
+    } catch {
+        Utils.showToast('Error conectando con el servidor', 'error');
+    }
 }
 
 // ─── GLOBALES ─────────────────────────────────────────────────────────────────

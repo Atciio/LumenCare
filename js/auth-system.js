@@ -450,13 +450,45 @@ window.DataManager       = DataManager;
 window.Utils             = Utils;
 
 // ─── ACTUALIZAR NAV SEGÚN ESTADO DE AUTH ─────────────────────────────────────
-// Agrega/quita la clase .user-authenticated del body.
-// El CSS usa esa clase para mostrar u ocultar los enlaces de nav protegidos.
-// Se llama automáticamente al cargar, al iniciar sesión y al cerrar sesión.
+// 1. Agrega/quita .user-authenticated para mostrar/ocultar links protegidos
+// 2. Si es profesional: inyecta "Mis Pacientes" y el badge en todas las páginas
 
 function updateAuthNav() {
     const isAuth = AuthSystem.isAuthenticated();
     document.body.classList.toggle('user-authenticated', isAuth);
+
+    // Limpiar elementos inyectados previamente
+    document.querySelector('.nav-link-pacientes')?.parentElement?.remove();
+    document.querySelector('.prof-badge-injected')?.remove();
+
+    if (!isAuth) return;
+
+    const user = AuthSystem.getUser();
+    if (!user || user.tipo_cuenta !== 'profesional') return;
+
+    // ── Inyectar link "Mis Pacientes" solo si no existe ya en el nav ──
+    const navMenu = document.querySelector('.nav-menu');
+    const alreadyHasPacientes = navMenu?.querySelector('a[href="profesional.html"]');
+    if (navMenu && !alreadyHasPacientes) {
+        const li = document.createElement('li');
+        li.innerHTML = `<a href="profesional.html" class="nav-link nav-link-pacientes">Mis Pacientes</a>`;
+        navMenu.insertBefore(li, navMenu.firstChild);
+    }
+
+    // ── Inyectar badge "Profesional" solo si no existe ya ──
+    const userInfo = document.getElementById('userInfo');
+    const alreadyHasBadge = document.querySelector('.prof-badge');
+    if (userInfo && !alreadyHasBadge) {
+        const badge = document.createElement('div');
+        badge.className = 'prof-badge prof-badge-injected';
+        badge.innerHTML = `
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            Profesional`;
+        userInfo.insertBefore(badge, userInfo.firstChild);
+    }
 }
 
 window.updateAuthNav = updateAuthNav;

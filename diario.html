@@ -24,11 +24,11 @@
                 </svg>
                 <span class="brand-name">LumenCare</span>
             </div>
-            <ul class="nav-menu" id="desktopNav">
-                <li><a href="index.html" class="nav-link">Inicio</a></li>
-                <li><a href="diario.html" class="nav-link active" data-auth-nav="true">Mi Diario</a></li>
-                <li><a href="foro.html" class="nav-link" data-auth-nav="true">Comunidad</a></li>
-                <li><a href="chatbot.html" class="nav-link" data-auth-nav="true">Asistente</a></li>
+            <ul class="nav-menu">
+                <li><a href="index.html"   class="nav-link">Inicio</a></li>
+                <li><a href="diario.html"  class="nav-link active">Mi Diario</a></li>
+                <li><a href="foro.html"    class="nav-link">Comunidad</a></li>
+                <li><a href="chatbot.html" class="nav-link">Asistente</a></li>
             </ul>
             <div class="nav-actions">
                 <div class="user-info" id="userInfo">
@@ -67,6 +67,31 @@
                     Nueva entrada
                 </button>
             </header>
+
+
+            <!-- ── MI PROFESIONAL ASIGNADO ─────────────────────────────── -->
+            <div class="mi-profesional hidden" id="miProfesionalCard">
+                <div class="mi-profesional__left">
+                    <div class="mi-profesional__icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                    <div class="mi-profesional__info">
+                        <p class="mi-profesional__label">Estás siendo acompañado por</p>
+                        <h3 class="mi-profesional__name" id="profAsignadoNombre">—</h3>
+                        <p class="mi-profesional__esp"  id="profAsignadoEsp">—</p>
+                    </div>
+                </div>
+                <button class="mi-profesional__btn" id="btnDesvincular">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6"  y1="6" x2="18" y2="18"/>
+                    </svg>
+                    Desvincularme
+                </button>
+            </div>
 
             <!-- ── FORMULARIO DE DIARIO ─────────────────────────────── -->
             <div class="entry-form-container hidden" id="entryFormContainer">
@@ -388,8 +413,6 @@
         </div>
     </main>
 
-    <script src="js/auth-system.js"></script>
-    <script src="js/diario.js"></script>
     <!-- NAVEGACIÓN MÓVIL -->
     <nav class="mobile-nav" id="mobileNav">
         <div class="mobile-nav__inner">
@@ -397,20 +420,22 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 Inicio
             </a>
-            <a href="diario.html" class="mobile-nav__link active" data-auth-nav="true">
+            <a href="diario.html" class="mobile-nav__link active">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                 Mi Diario
             </a>
-            <a href="foro.html" class="mobile-nav__link" data-auth-nav="true">
+            <a href="foro.html" class="mobile-nav__link">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 Comunidad
             </a>
-            <a href="chatbot.html" class="mobile-nav__link" data-auth-nav="true">
+            <a href="chatbot.html" class="mobile-nav__link">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20v-1a8 8 0 0 1 16 0v1"/></svg>
                 Asistente
             </a>
         </div>
     </nav>
 
+    <script src="js/auth-system.js"></script>
+    <script src="js/diario.js"></script>
 </body>
 </html>

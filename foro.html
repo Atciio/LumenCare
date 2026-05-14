@@ -61,10 +61,10 @@
                     </div>
                     <div>
                         <h1 class="page-title">Comunidad de Bienestar</h1>
-                        <p class="page-subtitle">Comparte experiencias, encuentra apoyo y construye conexiones significativas</p>
+                        <p class="page-subtitle" id="forumSubtitle">Comparte experiencias, encuentra apoyo y construye conexiones significativas</p>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="btnNewPost">
+                <button class="btn btn-primary hidden" id="btnNewPost">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     </svg>
@@ -161,9 +161,7 @@
                 </div>
                 <h3>No hay publicaciones aún</h3>
                 <p>Sé el primero en compartir con la comunidad</p>
-                <button class="btn btn-primary" onclick="document.getElementById('btnNewPost').click()">
-                    Crear publicación
-                </button>
+                <p id="emptyStateHint" style="font-size:0.9rem;color:var(--color-text-muted)">Los profesionales de LumenCare compartirán recursos y orientación aquí pronto.</p>
             </div>
         </div>
     </main>

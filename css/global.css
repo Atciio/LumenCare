@@ -497,6 +497,25 @@ button { font-family: var(--font-body); cursor: pointer; border: none; outline: 
 .mb-2 { margin-bottom: var(--spacing-md); }
 .mb-3 { margin-bottom: var(--spacing-lg); }
 
+
+/* ── BADGE PROFESIONAL (inyectado dinámicamente en todas las páginas) ──────── */
+.prof-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, rgba(107,127,215,0.15), rgba(123,201,166,0.15));
+    border: 1px solid var(--color-primary-light);
+    color: var(--color-primary-dark);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 /* ========================================
    NAVEGACIÓN BASADA EN AUTH
    Los enlaces con data-auth-nav="true" se ocultan
