@@ -474,7 +474,30 @@
    RESPONSIVE
    ======================================== */
 
+
+/* ── BARRA MÓVIL DE 5 ITEMS (profesional) ────────────────────────────────── */
+
+.mobile-nav--prof .mobile-nav__inner {
+    grid-template-columns: repeat(5, 1fr);
+    display: grid;
+    height: 100%;
+    align-items: center;
+}
+
+.mobile-nav--prof .mobile-nav__link {
+    font-size: 0.58rem;
+    padding: 6px 4px;
+    gap: 2px;
+}
+
+.mobile-nav--prof .mobile-nav__link svg {
+    width: 20px;
+    height: 20px;
+}
+
 @media (max-width: 768px) {
+    /* Padding inferior para la barra móvil */
+    body { padding-bottom: var(--mobile-nav-height); }
     .prof-main      { padding: 1rem; }
     .prof-header    { flex-direction: column; align-items: flex-start; }
     .prof-header__info { gap: 1rem; }
@@ -492,4 +515,17 @@
 @media (max-width: 480px) {
     .prof-stats { grid-template-columns: 1fr; }
     .account-type-selector { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+    .prof-stats { grid-template-columns: 1fr; }
+    .account-type-selector { grid-template-columns: 1fr; }
+    .search-patient-wrapper { flex-direction: column; }
+    .modal-content { padding: 1.25rem; width: 97%; max-height: 95vh; }
+    .modal-content--wide { max-width: 97%; }
+    .patient-card { padding: 1rem; }
+    .patient-actions { flex-direction: column; }
+    .btn-view-calendar,
+    .btn-remove-patient { width: 100%; justify-content: center; }
+    .prof-header__title { font-size: 1.4rem; }
 }

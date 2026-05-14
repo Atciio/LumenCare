@@ -516,6 +516,31 @@ button { font-family: var(--font-body); cursor: pointer; border: none; outline: 
     flex-shrink: 0;
 }
 
+
+/* ── BARRA MÓVIL DE 5 ITEMS (profesionales) ─────────────────────────────── */
+/* Se activa añadiendo la clase .mobile-nav--prof al <nav class="mobile-nav"> */
+
+.mobile-nav--prof .mobile-nav__inner {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    height: 100%;
+    align-items: center;
+    justify-items: center;
+}
+
+.mobile-nav--prof .mobile-nav__link {
+    font-size: 0.56rem;
+    padding: 6px 2px;
+    gap: 2px;
+    width: 100%;
+    justify-content: center;
+}
+
+.mobile-nav--prof .mobile-nav__link svg {
+    width: 20px;
+    height: 20px;
+}
+
 /* ========================================
    NAVEGACIÓN BASADA EN AUTH
    Los enlaces con data-auth-nav="true" se ocultan
