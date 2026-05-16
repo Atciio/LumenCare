@@ -98,17 +98,33 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
     });
 
     if (!bpRes.ok) {
-      console.error("❌ Botpress error:", bpRes.status, await bpRes.text());
+      const errText = await bpRes.text();
+      console.error("❌ Botpress HTTP error:", bpRes.status, errText);
       return res.status(502).json({ success: false, message: "Error al contactar el asistente" });
     }
 
-    const bpData = await bpRes.json();
-    const reply  =
-      bpData?.responses?.[0]?.text ||
-      bpData?.reply?.text          ||
-      bpData?.text                 ||
-      bpData?.message              ||
-      "Lo siento, no pude procesar tu mensaje en este momento.";
+    // Leer como texto primero para evitar error si el body está vacío
+    const rawText = await bpRes.text();
+    console.log("🤖 Botpress raw response:", rawText);
+
+    let reply = "Lo siento, no pude procesar tu mensaje en este momento.";
+
+    if (rawText && rawText.trim().length > 0) {
+      try {
+        const bpData = JSON.parse(rawText);
+        reply =
+          bpData?.responses?.[0]?.text ||
+          bpData?.output?.[0]?.text    ||
+          bpData?.reply?.text          ||
+          bpData?.text                 ||
+          bpData?.message              ||
+          bpData?.answer               ||
+          reply;
+      } catch {
+        // Si no es JSON, usar el texto directamente
+        reply = rawText.trim();
+      }
+    }
 
     return res.json({ success: true, reply });
   } catch (e) {
