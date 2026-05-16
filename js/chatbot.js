@@ -296,26 +296,23 @@ async function sendMessage() {
     const typingId = showTypingIndicator();
 
     try {
-        // ══════════════════════════════════════════════════════════
-        //  TODO: CONECTAR BOTPRESS AQUÍ
-        //
-        //  Cuando tu amigo te dé el snippet de Botpress,
-        //  reemplaza esta sección con la llamada a su API.
-        //
-        //  Ejemplo de cómo quedaría:
-        //
-        //  const botResponse = await fetch('URL_DE_BOTPRESS', {
-        //      method: 'POST',
-        //      headers: { 'Content-Type': 'application/json' },
-        //      body: JSON.stringify({ message: content, userId: currentUser.boleta })
-        //  });
-        //  const botData = await botResponse.json();
-        //  const botReply = botData.response;  // ajustar según la respuesta de Botpress
-        //
-        // ══════════════════════════════════════════════════════════
+        // ── BOTPRESS integrado ──────────────────────────────────────
+        const bpResponse = await fetch('/api/chat/botpress', {
+            method:  'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${AuthSystem.getToken()}`
+            },
+            body: JSON.stringify({
+                message:        content,
+                conversationId: activeConversationId
+            })
+        });
 
-        // RESPUESTA TEMPORAL mientras se conecta Botpress
-        const botReply = await getBotReplyTemp(content);
+        const bpData = await bpResponse.json();
+        const botReply = bpData.success
+            ? bpData.reply
+            : 'Lo siento, el asistente no está disponible en este momento. Intenta de nuevo.';
 
         removeTypingIndicator(typingId);
         appendMessage('bot', botReply);

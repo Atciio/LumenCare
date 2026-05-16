@@ -225,6 +225,8 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+    min-height: 0;        /* Evita que el área de mensajes empuje el input */
+    overflow: hidden;
     background: var(--color-bg-primary);
     position: relative;
 }
@@ -653,3 +655,28 @@
     .message-bubble { max-width: 92%; font-size: 0.875rem; padding: 0.75rem 0.9rem; }
     .suggestion-chip { font-size: 0.82rem; padding: 0.75rem; }
 }
+
+/* ── TABLET HORIZONTAL (769px - 1180px) ──────────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1180px) {
+    .chat-sidebar { width: 240px; }
+
+    .chat-input-area {
+        padding: 0.75rem 1rem 0.875rem;
+    }
+    .input-hint {
+        font-size: 0.68rem;
+        margin-top: 0.3rem;
+    }
+}
+
+/* Tablet horizontal con poca altura (landscape) */
+@media (max-height: 600px) and (min-width: 769px) {
+    .chat-layout { height: calc(100vh - 60px); }
+    .chat-messages { padding: 0.75rem 1.25rem; gap: 0.75rem; }
+    .chat-input-area { padding: 0.5rem 1rem 0.625rem; }
+    .input-hint { display: none; }
+    .chat-welcome { padding: 1rem 0.5rem; }
+    .welcome-avatar { width: 48px; height: 48px; }
+    .welcome-title { font-size: 1.1rem; }
+}
+

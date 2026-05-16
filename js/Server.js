@@ -76,6 +76,47 @@ app.delete("/api/conversaciones/:id",authMiddleware,async(req,res)=>{try{const{i
 app.get("/api/conversaciones/:id/mensajes",authMiddleware,async(req,res)=>{try{const{id}=req.params;const boleta=req.user.boleta;const[check]=await db.query("SELECT id_conversacion FROM conversaciones WHERE id_conversacion=? AND boleta=?",[id,boleta]);if(check.length===0)return res.status(403).json({success:false,message:"Sin permiso"});const[mensajes]=await db.query("SELECT id_mensaje,rol,contenido,fecha_mensaje FROM mensajes WHERE id_conversacion=? ORDER BY fecha_mensaje ASC",[id]);return res.json({success:true,mensajes});}catch(e){return res.status(500).json({success:false,message:"Error del servidor"});}});
 app.post("/api/conversaciones/:id/mensajes",authMiddleware,async(req,res)=>{try{const{id}=req.params;const{rol,contenido}=req.body;const boleta=req.user.boleta;if(!['user','bot'].includes(rol)||!contenido?.trim())return res.status(400).json({success:false,message:"Datos inválidos"});const[check]=await db.query("SELECT id_conversacion FROM conversaciones WHERE id_conversacion=? AND boleta=?",[id,boleta]);if(check.length===0)return res.status(403).json({success:false,message:"Sin permiso"});const[result]=await db.query("INSERT INTO mensajes (id_conversacion,rol,contenido) VALUES (?,?,?)",[id,rol,contenido.trim()]);return res.json({success:true,id_mensaje:result.insertId});}catch(e){return res.status(500).json({success:false,message:"Error del servidor"});}});
 
+
+// ─── BOTPRESS PROXY ───────────────────────────────────────────────────────────
+app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
+  try {
+    const { message, conversationId } = req.body;
+    if (!message?.trim()) return res.status(400).json({ success: false, message: "Mensaje vacío" });
+
+    const BOTPRESS_URL   = "https://webhook.botpress.cloud/eb5d8a0b-2a1a-47b0-894e-2e7c780fd788";
+    const BOTPRESS_TOKEN = process.env.BOTPRESS_TOKEN;
+    if (!BOTPRESS_TOKEN) return res.status(500).json({ success: false, message: "Token de Botpress no configurado" });
+
+    const bpRes = await fetch(BOTPRESS_URL, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${BOTPRESS_TOKEN}` },
+      body: JSON.stringify({
+        message,
+        userId:         req.user.boleta || req.user.cedula,
+        conversationId: conversationId || undefined
+      })
+    });
+
+    if (!bpRes.ok) {
+      console.error("❌ Botpress error:", bpRes.status, await bpRes.text());
+      return res.status(502).json({ success: false, message: "Error al contactar el asistente" });
+    }
+
+    const bpData = await bpRes.json();
+    const reply  =
+      bpData?.responses?.[0]?.text ||
+      bpData?.reply?.text          ||
+      bpData?.text                 ||
+      bpData?.message              ||
+      "Lo siento, no pude procesar tu mensaje en este momento.";
+
+    return res.json({ success: true, reply });
+  } catch (e) {
+    console.error("❌ /api/chat/botpress:", e.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
+  }
+});
+
 app.use((err,req,res,next)=>{console.error("❌ Error:",err.message);res.status(500).json({success:false,message:IS_PROD?"Error del servidor":err.message});});
 const PORT=process.env.PORT||3030;
 app.listen(PORT,()=>{console.log(`🚀 LumenCare en http://localhost:${PORT}\n   Modo: ${IS_PROD?"PRODUCCIÓN":"DESARROLLO"}`);});
