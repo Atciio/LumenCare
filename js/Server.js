@@ -1290,7 +1290,7 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
     const convRes = await fetch("https://api.botpress.cloud/v1/chat/conversations", {
       method:  "POST",
       headers: BP_HEADERS,
-      body:    JSON.stringify({ tags: {} }),
+      body:    JSON.stringify({ channel: "api", tags: {} }),
     });
 
     if (!convRes.ok) {
