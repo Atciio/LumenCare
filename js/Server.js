@@ -1279,32 +1279,54 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
 
     const userId = req.user.boleta || req.user.cedula;
 
-    const bpRes = await fetch(BOTPRESS_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${BOTPRESS_TOKEN}`,
-        "x-bot-id":      BOTPRESS_BOT_ID,
-      },
+    const BP_HEADERS = {
+      "Content-Type":  "application/json",
+      "Authorization": `Bearer ${BOTPRESS_TOKEN}`,
+      "x-bot-id":      BOTPRESS_BOT_ID,
+    };
+    const bpUserId = String(userId).padEnd(28, "0");
+
+    // 1. Crear o reutilizar conversación en Botpress
+    const convRes = await fetch("https://api.botpress.cloud/v1/chat/conversations", {
+      method:  "POST",
+      headers: BP_HEADERS,
+      body:    JSON.stringify({ tags: {} }),
+    });
+
+    if (!convRes.ok) {
+      const errText = await convRes.text();
+      console.error("❌ Botpress create conversation error:", convRes.status, errText);
+      return res.status(502).json({ success: false, message: "Error al iniciar conversación con el asistente" });
+    }
+
+    const convData = await convRes.json();
+    const bpConversationId = convData?.conversation?.id || convData?.id;
+    console.log("🤖 Botpress conversationId:", bpConversationId);
+
+    if (!bpConversationId) {
+      return res.status(502).json({ success: false, message: "No se pudo crear conversación en Botpress" });
+    }
+
+    // 2. Enviar el mensaje
+    const msgRes = await fetch(BOTPRESS_URL, {
+      method:  "POST",
+      headers: BP_HEADERS,
       body: JSON.stringify({
         type:           "text",
         payload:        { text: message },
         tags:           {},
-        userId:         String(userId).padEnd(28, "0"),
-        // Botpress requiere conversationId de mínimo 28 caracteres
-        conversationId: String(conversationId || "default").padEnd(28, "0"),
+        userId:         bpUserId,
+        conversationId: bpConversationId,
       }),
     });
 
-    if (!bpRes.ok) {
-      const errText = await bpRes.text();
-      console.error("❌ Botpress HTTP error:", bpRes.status, errText);
-      return res
-        .status(502)
-        .json({ success: false, message: "Error al contactar el asistente" });
+    if (!msgRes.ok) {
+      const errText = await msgRes.text();
+      console.error("❌ Botpress HTTP error:", msgRes.status, errText);
+      return res.status(502).json({ success: false, message: "Error al contactar el asistente" });
     }
 
-    const rawText = await bpRes.text();
+    const rawText = await msgRes.text();
     console.log("🤖 Botpress raw response:", rawText);
 
     let reply = "Lo siento, no pude procesar tu mensaje en este momento.";
@@ -1312,7 +1334,6 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
     if (rawText && rawText.trim().length > 0) {
       try {
         const bpData = JSON.parse(rawText);
-        // La Messaging API de Botpress devuelve los mensajes en responses[]
         reply =
           bpData?.responses?.[0]?.payload?.text ||
           bpData?.responses?.[0]?.text          ||
