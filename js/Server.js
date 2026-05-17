@@ -1,4 +1,5 @@
 require("dotenv").config();
+// bot.js se carga dinámicamente como fallback si Groq no está disponible
 const express = require("express"),
   mysql = require("mysql2/promise"),
   path = require("path"),
@@ -1261,99 +1262,274 @@ app.post(
   },
 );
 
-// ─── BOTPRESS PROXY ───────────────────────────────────────────────────────────
-app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
+// ─── DIAGNÓSTICO GROQ ────────────────────────────────────────────────────────
+app.get("/api/chat/status", async (req, res) => {
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY)
+    return res.json({ success: false, groq: false, message: "GROQ_API_KEY no configurada", fallback: "bot propio activo" });
   try {
-    const { message, conversationId } = req.body;
+    const testRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
+      body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{ role: "user", content: "Responde solo: ok" }], max_tokens: 5 }),
+    });
+    if (testRes.ok)
+      return res.json({ success: true, groq: true, model: "llama-3.1-8b-instant", message: "Groq conectado correctamente ✅" });
+    const err = await testRes.text();
+    return res.json({ success: false, groq: false, message: `Error Groq ${testRes.status}`, detail: err, fallback: "bot propio activo" });
+  } catch (e) {
+    return res.json({ success: false, groq: false, message: e.message, fallback: "bot propio activo" });
+  }
+});
+
+
+// ─── RESUMEN IA DEL PACIENTE (no se guarda en BD) ────────────────────────────
+app.get("/api/profesionales/pacientes/:boleta/resumen", profMiddleware, async (req, res) => {
+  try {
+    const { boleta } = req.params;
+    const cedula = req.user.cedula;
+
+    // Verificar que es paciente del profesional
+    const [check] = await db.query(
+      "SELECT id_relacion FROM pacientes WHERE cedula_profesional=? AND boleta_alumno=?",
+      [cedula, boleta]
+    );
+    if (check.length === 0)
+      return res.status(403).json({ success: false, message: "No es tu paciente" });
+
+    // Obtener datos del alumno
+    const [alumno] = await db.query(
+      "SELECT nombre, apellido_paterno FROM usuarios WHERE boleta=?", [boleta]
+    );
+    const nombreAlumno = alumno.length > 0
+      ? `${alumno[0].nombre} ${alumno[0].apellido_paterno}` : "el alumno";
+
+    // Obtener últimas 10 entradas del diario
+    const [diario] = await db.query(`
+      SELECT sentimiento_predominante, sentimiento_secundario, registro_diario, fecha_registro
+      FROM diario WHERE boleta=?
+      ORDER BY fecha_registro DESC LIMIT 10
+    `, [boleta]);
+
+    // Obtener últimos 30 mensajes del chat
+    const [mensajes] = await db.query(`
+      SELECT m.rol, m.contenido, m.fecha_mensaje
+      FROM mensajes m
+      INNER JOIN conversaciones c ON c.id_conversacion = m.id_conversacion
+      WHERE c.boleta=?
+      ORDER BY m.fecha_mensaje DESC LIMIT 30
+    `, [boleta]);
+
+    // Si no hay datos suficientes
+    if (diario.length === 0 && mensajes.length === 0) {
+      return res.json({ success: true, resumen: "El alumno no tiene registros en el diario ni conversaciones con el asistente aún. No es posible generar un resumen." });
+    }
+
+    const GROQ_API_KEY = process.env.GROQ_API_KEY;
+    if (!GROQ_API_KEY)
+      return res.status(500).json({ success: false, message: "Groq no configurado" });
+
+    // Preparar contexto del diario
+    const contextoDiario = diario.length > 0
+      ? diario.map(d => {
+          const fecha = new Date(d.fecha_registro).toLocaleDateString('es-MX', { day:'numeric', month:'long' });
+          return `- ${fecha}: ${d.sentimiento_predominante}${d.sentimiento_secundario ? ' + ' + d.sentimiento_secundario : ''} — "${d.registro_diario.substring(0, 100)}"`;
+        }).join('\n')
+      : "Sin entradas en el diario.";
+
+    // Preparar contexto del chat (invertir para orden cronológico)
+    const contextoChat = mensajes.length > 0
+      ? mensajes.reverse().map(m => `${m.rol === 'user' ? 'Alumno' : 'Bot'}: ${m.contenido.substring(0, 120)}`).join('\n')
+      : "Sin conversaciones con el asistente.";
+
+    // Llamar a Groq para generar el resumen
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        max_tokens: 400,
+        temperature: 0.4,
+        messages: [
+          {
+            role: "system",
+            content: `Eres un asistente que ayuda a psicólogos y profesionales de salud mental a entender el estado emocional de sus pacientes. 
+Genera resúmenes clínicos breves, objetivos y útiles basados en datos del diario emocional y conversaciones con el asistente de bienestar.
+El resumen debe ser en español, máximo 4 oraciones, y destacar: estado emocional predominante, temas recurrentes, señales de alerta si las hay, y cambios notables.
+Sé directo y útil para el profesional, sin ser alarmista innecesariamente.`
+          },
+          {
+            role: "user",
+            content: `Genera un resumen clínico breve sobre el estado emocional de ${nombreAlumno} basado en estos datos:
+
+ENTRADAS DEL DIARIO (más recientes primero):
+${contextoDiario}
+
+CONVERSACIONES CON EL ASISTENTE:
+${contextoChat}
+
+Resumen para el profesional:`
+          }
+        ]
+      })
+    });
+
+    if (!groqRes.ok) {
+      return res.status(502).json({ success: false, message: "Error al generar resumen" });
+    }
+
+    const groqData = await groqRes.json();
+    const resumen = groqData.choices?.[0]?.message?.content?.trim()
+      || "No se pudo generar el resumen.";
+
+    return res.json({ success: true, resumen });
+
+  } catch (e) {
+    console.error("❌ /api/profesionales/pacientes/resumen:", e.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
+  }
+});
+
+// ─── BOT DE ACOMPAÑAMIENTO LUMENCARE (Groq AI) ───────────────────────────────
+
+// Historial de conversaciones en memoria { conversationId: [{role, content}] }
+const chatHistorials = new Map();
+
+const SYSTEM_PROMPT = `Eres un asistente de acompañamiento emocional llamado LumenCare, diseñado específicamente para estudiantes del Instituto Politécnico Nacional (IPN) en México.
+
+Tu rol es escuchar, acompañar y apoyar emocionalmente a los estudiantes universitarios. No eres un terapeuta ni reemplazas la atención psicológica profesional, pero sí eres un primer punto de contacto empático y seguro.
+
+PERSONALIDAD:
+- Cálido, empático y sin juicios
+- Hablas en español mexicano natural y coloquial, nunca rígido ni clínico
+- Usas el nombre del usuario cuando lo conoces
+- Eres paciente — nunca apresuras al usuario
+- Respondes con preguntas abiertas para entender mejor antes de ofrecer soluciones
+
+FLUJO DE CONVERSACIÓN:
+1. Primero preguntas el nombre del usuario (si no lo sabes aún)
+2. Escuchas y exploras lo que siente antes de dar consejos
+3. Validas sus emociones ("tiene sentido que te sientas así")
+4. Ofreces ejercicios guiados paso a paso SOLO cuando el usuario está listo
+5. Haces seguimiento después del ejercicio ("¿cómo te quedaste?")
+
+EJERCICIOS QUE PUEDES GUIAR (paso a paso, esperando confirmación entre cada paso):
+- Respiración 4-7-8: inhala 4 seg, sostén 7 seg, exhala 8 seg
+- Grounding 5 sentidos: 5 ves, 4 tocas, 3 escuchas, 2 hueles, 1 saboras
+- Relajación muscular progresiva: tensión y relajación de grupos musculares
+- Meditación guiada: observación de respiración y pensamientos
+- Visualización del lugar seguro: crear y explorar un espacio mental tranquilo
+
+TEMAS QUE MANEJAS:
+- Estrés y agobio académico (exámenes, materias, maestros)
+- Ansiedad y nervios
+- Tristeza, duelo y pérdidas
+- Soledad y problemas de relaciones
+- Autoestima e inseguridad
+- Problemas de sueño
+- Manejo del tiempo y procrastinación
+
+CRISIS — MUY IMPORTANTE:
+Si el usuario menciona suicidio, hacerse daño, no querer vivir, o cualquier señal de riesgo inmediato, SIEMPRE incluye este número en tu respuesta:
+📞 Línea de la Vida: 800 290 0024 (gratuita, 24 horas, confidencial)
+
+LÍMITES CLAROS:
+- No diagnosticas enfermedades mentales
+- No recetas medicamentos
+- Si la situación supera tu rol, recomiendas buscar al psicólogo del IPN o la Línea de la Vida
+- Nunca inventas información médica
+
+FORMATO:
+- Respuestas conversacionales y cortas (2-4 oraciones máximo, a menos que estés guiando un ejercicio)
+- Usa emojis con moderación y naturalidad 💜
+- Cuando guías ejercicios, da UN paso a la vez y espera confirmación antes de continuar
+- Nunca respondas en inglés aunque el usuario escriba en inglés — siempre en español`;
+
+app.post("/api/chat/bot", authMiddleware, async (req, res) => {
+  try {
+    const { message, conversationId, mood, historial } = req.body;
     if (!message?.trim())
       return res.status(400).json({ success: false, message: "Mensaje vacío" });
 
-    const BOTPRESS_TOKEN  = process.env.BOTPRESS_TOKEN;
-    const BOTPRESS_BOT_ID = "f3083457-2c1b-493d-bdd6-8a824e864a1e";
-    const BOTPRESS_URL    = "https://api.botpress.cloud/v1/chat/messages";
+    const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-    if (!BOTPRESS_TOKEN)
-      return res
-        .status(500)
-        .json({ success: false, message: "Token de Botpress no configurado" });
-
-    const userId = req.user.boleta || req.user.cedula;
-
-    const BP_HEADERS = {
-      "Content-Type":  "application/json",
-      "Authorization": `Bearer ${BOTPRESS_TOKEN}`,
-      "x-bot-id":      BOTPRESS_BOT_ID,
-    };
-    const bpUserId = String(userId).padEnd(28, "0");
-
-    // 1. Crear o reutilizar conversación en Botpress
-    const convRes = await fetch("https://api.botpress.cloud/v1/chat/conversations", {
-      method:  "POST",
-      headers: BP_HEADERS,
-      body:    JSON.stringify({ channel: "api", tags: {} }),
-    });
-
-    if (!convRes.ok) {
-      const errText = await convRes.text();
-      console.error("❌ Botpress create conversation error:", convRes.status, errText);
-      return res.status(502).json({ success: false, message: "Error al iniciar conversación con el asistente" });
+    // Si no hay Groq API key, usar el bot propio como fallback
+    if (!GROQ_API_KEY) {
+      console.warn("⚠️  GROQ_API_KEY no configurada, usando bot propio");
+      const { getBotReply } = require("./bot");
+      const reply = await getBotReply(message, String(conversationId || "default"), mood || null);
+      return res.json({ success: true, reply });
     }
 
-    const convData = await convRes.json();
-    const bpConversationId = convData?.conversation?.id || convData?.id;
-    console.log("🤖 Botpress conversationId:", bpConversationId);
+    // Obtener o inicializar historial de esta conversación
+    const convKey = String(conversationId || "default");
+    if (!chatHistorials.has(convKey)) chatHistorials.set(convKey, []);
+    const messages = chatHistorials.get(convKey);
 
-    if (!bpConversationId) {
-      return res.status(502).json({ success: false, message: "No se pudo crear conversación en Botpress" });
+    // Agregar contexto del mood del diario al system prompt si existe
+    let systemPrompt = SYSTEM_PROMPT;
+    if (mood) {
+      const moodLabels = {
+        euforico:'eufórico/a', contento:'contento/a', tranquilo:'tranquilo/a',
+        neutral:'neutral', ansioso:'ansioso/a', frustrado:'frustrado/a',
+        triste:'triste', solitario:'solitario/a', agobiado:'agobiado/a', desesperado:'desesperado/a'
+      };
+      systemPrompt += `\n\nCONTEXTO ADICIONAL: El último registro del diario emocional del usuario indica que se ha sentido "${moodLabels[mood] || mood}". Toma esto en cuenta para personalizar tu respuesta, pero no lo menciones directamente a menos que sea relevante o el usuario lo traiga a la conversación.`;
     }
 
-    // 2. Enviar el mensaje
-    const msgRes = await fetch(BOTPRESS_URL, {
-      method:  "POST",
-      headers: BP_HEADERS,
+    // Agregar mensaje del usuario al historial
+    messages.push({ role: "user", content: message });
+
+    // Limitar historial a los últimos 20 mensajes para no exceder tokens
+    const recentMessages = messages.slice(-20);
+
+    // Llamar a la API de Groq
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+      },
       body: JSON.stringify({
-        type:           "text",
-        payload:        { text: message },
-        tags:           {},
-        userId:         bpUserId,
-        conversationId: bpConversationId,
+        model:       "llama-3.1-8b-instant",
+        messages:    [{ role: "system", content: systemPrompt }, ...recentMessages],
+        max_tokens:  500,
+        temperature: 0.75,
       }),
     });
 
-    if (!msgRes.ok) {
-      const errText = await msgRes.text();
-      console.error("❌ Botpress HTTP error:", msgRes.status, errText);
-      return res.status(502).json({ success: false, message: "Error al contactar el asistente" });
+    if (!groqRes.ok) {
+      const err = await groqRes.text();
+      console.error("❌ Groq error:", groqRes.status, err);
+      // Fallback al bot propio si Groq falla
+      const { getBotReply } = require("./bot");
+      const reply = await getBotReply(message, convKey, mood || null);
+      return res.json({ success: true, reply });
     }
 
-    const rawText = await msgRes.text();
-    console.log("🤖 Botpress raw response:", rawText);
+    const groqData = await groqRes.json();
+    const reply = groqData.choices?.[0]?.message?.content?.trim()
+      || "Lo siento, tuve un problema al responder. ¿Puedes intentarlo de nuevo?";
 
-    let reply = "Lo siento, no pude procesar tu mensaje en este momento.";
-
-    if (rawText && rawText.trim().length > 0) {
-      try {
-        const bpData = JSON.parse(rawText);
-        reply =
-          bpData?.responses?.[0]?.payload?.text ||
-          bpData?.responses?.[0]?.text          ||
-          bpData?.messages?.[0]?.payload?.text  ||
-          bpData?.messages?.[0]?.text           ||
-          bpData?.output?.[0]?.text             ||
-          bpData?.reply?.text                   ||
-          bpData?.text                          ||
-          reply;
-      } catch {
-        reply = rawText.trim();
-      }
-    }
+    // Guardar respuesta en el historial
+    messages.push({ role: "assistant", content: reply });
 
     return res.json({ success: true, reply });
+
   } catch (e) {
-    console.error("❌ /api/chat/botpress:", e.message);
-    return res
-      .status(500)
-      .json({ success: false, message: "Error del servidor" });
+    console.error("❌ /api/chat/bot:", e.message);
+    // Fallback al bot propio si hay error inesperado
+    try {
+      const { getBotReply } = require("./bot");
+      const reply = await getBotReply(
+        req.body.message,
+        String(req.body.conversationId || "default"),
+        req.body.mood || null
+      );
+      return res.json({ success: true, reply });
+    } catch {
+      return res.status(500).json({ success: false, message: "Error del servidor" });
+    }
   }
 });
 

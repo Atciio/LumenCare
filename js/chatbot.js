@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateUserUI();
     setupEventListeners();
     loadConversations();
+    loadLastMood();
 });
 
 function updateUserUI() {
@@ -250,8 +251,7 @@ async function loadMessages(conversationId) {
         if (!data.success) return;
 
         if (data.mensajes.length === 0) {
-            // Conversación vacía — mostrar mensaje inicial del bot
-            appendMessage('bot', '¡Hola! 👋 Estoy aquí para escucharte. ¿Cómo te sientes hoy?');
+            // Conversación nueva — Groq maneja el primer saludo, no mostrar mensaje hardcodeado
         } else {
             data.mensajes.forEach(m => appendMessage(m.rol, m.contenido, m.fecha_mensaje));
         }
@@ -296,8 +296,8 @@ async function sendMessage() {
     const typingId = showTypingIndicator();
 
     try {
-        // ── BOTPRESS integrado ──────────────────────────────────────
-        const bpResponse = await fetch('/api/chat/botpress', {
+        // ── LumenCare Bot ────────────────────────────────────────────
+        const botResponse = await fetch('/api/chat/bot', {
             method:  'POST',
             headers: {
                 'Content-Type':  'application/json',
@@ -305,13 +305,14 @@ async function sendMessage() {
             },
             body: JSON.stringify({
                 message:        content,
-                conversationId: activeConversationId
+                conversationId: activeConversationId,
+                mood:           currentUser?.lastMood || null,
             })
         });
 
-        const bpData = await bpResponse.json();
-        const botReply = bpData.success
-            ? bpData.reply
+        const botData  = await botResponse.json();
+        const botReply = botData.success
+            ? botData.reply
             : 'Lo siento, el asistente no está disponible en este momento. Intenta de nuevo.';
 
         removeTypingIndicator(typingId);
@@ -529,4 +530,19 @@ async function getBotReplyTemp(userMessage) {
 
 window.openConversation   = openConversation;
 window.deleteConversation = deleteConversation;
+
+// ─── CARGAR ÚLTIMO MOOD DEL DIARIO ───────────────────────────────────────────
+
+async function loadLastMood() {
+    try {
+        const res  = await fetch('/api/alumno/ultimo-mood', {
+            headers: { 'Authorization': `Bearer ${AuthSystem.getToken()}` }
+        });
+        const data = await res.json();
+        if (data.success && data.mood) {
+            currentUser.lastMood = data.mood;
+        }
+    } catch { /* silencioso */ }
+}
+
 window.useSuggestion      = useSuggestion;

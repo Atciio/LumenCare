@@ -118,6 +118,16 @@ function createPatientCard(p) {
                 Eliminar
             </button>
         </div>
+        <!-- Resumen IA — se genera bajo demanda, no se guarda en BD -->
+        <div class="patient-resumen" id="resumen-${p.boleta}" onclick="event.stopPropagation()">
+            <button class="btn-resumen-ia" onclick="generarResumen('${p.boleta}', this)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+                </svg>
+                Resumen IA
+            </button>
+            <div class="resumen-ia-content hidden" id="resumen-content-${p.boleta}"></div>
+        </div>
     </div>`;
 }
 
@@ -371,6 +381,45 @@ async function addPatient(boleta) {
     } catch { Utils.showToast('Error conectando con el servidor', 'error'); }
 }
 
+
+// ─── RESUMEN IA ────────────────────────────────────────────────────────────────
+
+async function generarResumen(boleta, btn) {
+    const contenedor = document.getElementById(`resumen-content-${boleta}`);
+    if (!contenedor) return;
+
+    // Si ya está visible, ocultarlo (toggle)
+    if (!contenedor.classList.contains('hidden')) {
+        contenedor.classList.add('hidden');
+        btn.querySelector('span') && (btn.querySelector('span').textContent = 'Resumen IA');
+        return;
+    }
+
+    // Mostrar loading
+    btn.disabled = true;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Generando...`;
+
+    try {
+        const res  = await fetch(`/api/profesionales/pacientes/${boleta}/resumen`, {
+            headers: { 'Authorization': `Bearer ${AuthSystem.getToken()}` }
+        });
+        const data = await res.json();
+
+        contenedor.innerHTML = data.success
+            ? `<p class="resumen-ia-text">${Utils.escapeHtml(data.resumen)}</p>
+               <span class="resumen-ia-badge">✨ Generado por IA · No guardado</span>`
+            : `<p class="resumen-ia-error">${data.message}</p>`;
+
+        contenedor.classList.remove('hidden');
+    } catch {
+        contenedor.innerHTML = `<p class="resumen-ia-error">Error al conectar con el servidor.</p>`;
+        contenedor.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg> Resumen IA`;
+    }
+}
+
 // ─── GLOBALES ─────────────────────────────────────────────────────────────────
 window.openPacienteModal    = openPacienteModal;
 window.closePacienteModal   = closePacienteModal;
@@ -385,3 +434,4 @@ window.guardarNota          = guardarNota;
 window.editarNota           = editarNota;
 window.eliminarNota         = eliminarNota;
 window.cancelarEdicionNota  = cancelarEdicionNota;
+window.generarResumen       = generarResumen;
