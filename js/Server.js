@@ -1287,12 +1287,11 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
         "x-bot-id":      BOTPRESS_BOT_ID,
       },
       body: JSON.stringify({
-        message: {
-          type:    "text",
-          payload: { text: message },
-        },
-        userId:         userId,
-        conversationId: conversationId || undefined,
+        type:           "text",
+        payload:        { text: message },
+        tags:           {},
+        userId:         userId.padEnd(28, "0"),  // mínimo 28 caracteres
+        conversationId: conversationId ? String(conversationId) : undefined,
       }),
     });
 
