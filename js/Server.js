@@ -1268,23 +1268,30 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
     if (!message?.trim())
       return res.status(400).json({ success: false, message: "Mensaje vacío" });
 
-    const BOTPRESS_URL =
-      "https://webhook.botpress.cloud/eb5d8a0b-2a1a-47b0-894e-2e7c780fd788";
-    const BOTPRESS_TOKEN = process.env.BOTPRESS_TOKEN;
+    const BOTPRESS_TOKEN  = process.env.BOTPRESS_TOKEN;
+    const BOTPRESS_BOT_ID = "f3083457-2c1b-493d-bdd6-8a824e864a1e";
+    const BOTPRESS_URL    = "https://api.botpress.cloud/v1/chat/messages";
+
     if (!BOTPRESS_TOKEN)
       return res
         .status(500)
         .json({ success: false, message: "Token de Botpress no configurado" });
 
+    const userId = req.user.boleta || req.user.cedula;
+
     const bpRes = await fetch(BOTPRESS_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${BOTPRESS_TOKEN}`,
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${BOTPRESS_TOKEN}`,
+        "x-bot-id":      BOTPRESS_BOT_ID,
       },
       body: JSON.stringify({
-        message,
-        userId: req.user.boleta || req.user.cedula,
+        message: {
+          type:    "text",
+          payload: { text: message },
+        },
+        userId:         userId,
         conversationId: conversationId || undefined,
       }),
     });
@@ -1297,7 +1304,6 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
         .json({ success: false, message: "Error al contactar el asistente" });
     }
 
-    // Leer como texto primero para evitar error si el body está vacío
     const rawText = await bpRes.text();
     console.log("🤖 Botpress raw response:", rawText);
 
@@ -1306,16 +1312,17 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
     if (rawText && rawText.trim().length > 0) {
       try {
         const bpData = JSON.parse(rawText);
+        // La Messaging API de Botpress devuelve los mensajes en responses[]
         reply =
-          bpData?.responses?.[0]?.text ||
-          bpData?.output?.[0]?.text ||
-          bpData?.reply?.text ||
-          bpData?.text ||
-          bpData?.message ||
-          bpData?.answer ||
+          bpData?.responses?.[0]?.payload?.text ||
+          bpData?.responses?.[0]?.text          ||
+          bpData?.messages?.[0]?.payload?.text  ||
+          bpData?.messages?.[0]?.text           ||
+          bpData?.output?.[0]?.text             ||
+          bpData?.reply?.text                   ||
+          bpData?.text                          ||
           reply;
       } catch {
-        // Si no es JSON, usar el texto directamente
         reply = rawText.trim();
       }
     }
