@@ -1286,13 +1286,15 @@ app.post("/api/chat/botpress", authMiddleware, async (req, res) => {
         "Authorization": `Bearer ${BOTPRESS_TOKEN}`,
         "x-bot-id":      BOTPRESS_BOT_ID,
       },
-      body: JSON.stringify({
-        type:           "text",
-        payload:        { text: message },
-        tags:           {},
-        userId:         userId.padEnd(28, "0"),  // mínimo 28 caracteres
-        conversationId: conversationId ? String(conversationId) : undefined,
-      }),
+      body: JSON.stringify(Object.assign({
+        type:    "text",
+        payload: { text: message },
+        tags:    {},
+        userId:  String(userId).padEnd(28, "0"),
+      }, conversationId && String(conversationId).length >= 28
+        ? { conversationId: String(conversationId) }
+        : {}
+      )),
     });
 
     if (!bpRes.ok) {
