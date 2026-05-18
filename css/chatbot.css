@@ -446,6 +446,8 @@
     word-break: break-word;
     width: fit-content;
     max-width: 100%;
+    min-width: 60px;          /* evita que mensajes cortos partan letras */
+    white-space: pre-wrap;    /* respeta saltos de línea del bot */
 }
 
 .message.bot .message-bubble {
