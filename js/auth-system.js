@@ -37,11 +37,21 @@ const AuthSystem = {
     },
 
     logout() {
+        // Revocar el token en el servidor antes de eliminar del frontend
+        const token = DataManager.get('token');
+        if (token) {
+            // Fire and forget — no esperamos respuesta para no bloquear el logout
+            fetch('/api/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                keepalive: true   // Asegura que el request se complete aunque la página se cierre
+            }).catch(() => {});  // Silenciar errores de red
+        }
         InactivityManager.stop();
-        DataManager.remove("token");
-        DataManager.remove("user");
+        DataManager.remove('token');
+        DataManager.remove('user');
         window.dispatchEvent(new CustomEvent('authStateChanged'));
-        return { success: true, message: "Sesión cerrada" };
+        return { success: true, message: 'Sesión cerrada' };
     },
 
     getUser() {

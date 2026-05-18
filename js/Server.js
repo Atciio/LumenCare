@@ -1,5 +1,6 @@
 require("dotenv").config();
 // bot.js se carga dinámicamente como fallback si Groq no está disponible
+const crypto = require('crypto');
 const express = require("express"),
   mysql = require("mysql2/promise"),
   path = require("path"),
@@ -339,6 +340,34 @@ app.post("/api/login", authLimiter, async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: "Error del servidor" });
+  }
+});
+
+
+// ─── LOGOUT ───────────────────────────────────────────────────────────────────
+app.post("/api/logout", authMiddleware, async (req, res) => {
+  try {
+    const token = req.headers["authorization"]?.split(" ")[1];
+    if (!token) return res.json({ success: true });
+
+    const tokenHash = hashToken(token);
+    // Calcular cuándo expira el token para limpieza automática
+    const expiraEn = new Date(req.user.exp * 1000);
+
+    await db.query(
+      "INSERT IGNORE INTO tokens_revocados (token_hash, expira_en) VALUES (?, ?)",
+      [tokenHash, expiraEn]
+    );
+
+    // Limpiar tokens expirados (mantenimiento) — solo 1 de cada 20 requests
+    if (Math.random() < 0.05) {
+      await db.query("DELETE FROM tokens_revocados WHERE expira_en < NOW()");
+    }
+
+    return res.json({ success: true, message: "Sesión cerrada correctamente" });
+  } catch (e) {
+    console.error("❌ /api/logout:", e.message);
+    return res.status(500).json({ success: false, message: "Error del servidor" });
   }
 });
 
@@ -1395,101 +1424,212 @@ Resumen para el profesional:`
 // Historial de conversaciones en memoria { conversationId: [{role, content}] }
 const chatHistorials = new Map();
 
-const SYSTEM_PROMPT = `Eres un asistente de acompañamiento emocional llamado LumenCare, diseñado específicamente para estudiantes del Instituto Politécnico Nacional (IPN) en México.
+// ─── SYSTEM PROMPT LUMENCARE ──────────────────────────────────────────────────
+function buildSystemPrompt(prefs, mood) {
+  const tieneNombre = !!prefs?.nombre_chat;
+  const tieneEdad   = !!prefs?.edad;
+  const tieneTodo   = tieneNombre && tieneEdad;
 
-Tu rol es escuchar, acompañar y apoyar emocionalmente a los estudiantes universitarios. No eres un terapeuta ni reemplazas la atención psicológica profesional, pero sí eres un primer punto de contacto empático y seguro.
+  const moodLabels = {
+    euforico:'eufórico/a', contento:'contento/a', tranquilo:'tranquilo/a',
+    neutral:'neutral', ansioso:'ansioso/a', frustrado:'frustrado/a',
+    triste:'triste', solitario:'solitario/a', agobiado:'agobiado/a', desesperado:'desesperado/a'
+  };
+  const moodInfo = mood
+    ? `Su último registro emocional indica que se sintió "${moodLabels[mood] || mood}". Úsalo como contexto si es relevante, pero no lo menciones a menos que el usuario lo traiga.`
+    : '';
+
+  // Bloque explícito según si ya tenemos los datos o no
+  const bloqueUsuario = tieneTodo
+    ? `DATOS DEL USUARIO — YA LOS TIENES, NO LOS PIDAS:
+Nombre: ${prefs.nombre_chat}
+Edad: ${prefs.edad} años
+PROHIBIDO: No preguntes nombre ni edad. Ya los tienes. Úsalos naturalmente en la conversación.
+${moodInfo}`
+    : `DATOS DEL USUARIO:
+${tieneNombre ? `Nombre: ${prefs.nombre_chat}` : 'Nombre: desconocido'}
+${tieneEdad   ? `Edad: ${prefs.edad} años`      : 'Edad: desconocida'}
+PRIMERA VEZ: Como no tienes ${!tieneNombre && !tieneEdad ? 'nombre ni edad' : !tieneNombre ? 'el nombre' : 'la edad'}, pídelo en tu primer mensaje de forma cálida y natural.
+${moodInfo}`;
+
+  return `Eres LumenCare, un asistente de acompañamiento emocional para estudiantes del IPN en México. Piensa en ti como ese amigo que siempre tiene tiempo para escuchar, que no juzga, y que de verdad se preocupa por cómo está la otra persona.
 
 PERSONALIDAD:
-- Cálido, empático y sin juicios
-- Hablas en español mexicano natural y coloquial, nunca rígido ni clínico
-- Usas el nombre del usuario cuando lo conoces
-- Eres paciente — nunca apresuras al usuario
-- Respondes con preguntas abiertas para entender mejor antes de ofrecer soluciones
+Hablas de forma natural y coloquial, como se habla entre amigos en México. Nada de lenguaje clínico ni frases de manual. Eres expresivo y genuino: si algo te parece fuerte, lo dices; si alguien comparte algo bonito, te alegras de verdad; si alguien está mal, se nota que te importa. No eres una máquina repitiendo frases.
 
-FLUJO DE CONVERSACIÓN:
-1. Primero preguntas el nombre del usuario (si no lo sabes aún)
-2. Escuchas y exploras lo que siente antes de dar consejos
-3. Validas sus emociones ("tiene sentido que te sientas así")
-4. Ofreces ejercicios guiados paso a paso SOLO cuando el usuario está listo
-5. Haces seguimiento después del ejercicio ("¿cómo te quedaste?")
+SOBRE EL USUARIO:
+${bloqueUsuario}
 
-EJERCICIOS QUE PUEDES GUIAR (paso a paso, esperando confirmación entre cada paso):
-- Respiración 4-7-8: inhala 4 seg, sostén 7 seg, exhala 8 seg
+USO DEL NOMBRE: Muy de vez en cuando, solo cuando sea natural. NO en cada mensaje.
+
+REGLA DE ORO:
+NUNCA inventes ni asumas datos. Si no te lo dijeron, no lo sabes.
+
+
+CÓMO ACOMPAÑAS — FLUJO EXACTO:
+1. PRIMER mensaje del usuario con emoción difícil: valida y haz UNA pregunta para entender mejor.
+2. SEGUNDO mensaje: escucha, valida de nuevo y OFRECE PROACTIVAMENTE un ejercicio. No esperes más. Ejemplo: "Oye, ¿te gustaría que hiciéramos un ejercicio de respiración rápido? A veces ayuda mucho cuando uno está así de cargado 💜"
+3. Si el usuario acepta: guía el ejercicio UN PASO A LA VEZ, esperando que confirme antes de continuar.
+4. Si el usuario quiere seguir hablando: respeta eso y continúa escuchando.
+5. Al terminar el ejercicio: pregunta cómo quedaron.
+
+CUÁNDO OFRECER EJERCICIOS (no esperes que el usuario lo pida):
+- Estrés o ansiedad intensa → Respiración 4-7-8
+- Sensación de agobio o saturación → Grounding 5 sentidos
+- Tristeza o duelo → Meditación guiada o visualización
+- Tensión física o problemas de sueño → Relajación muscular progresiva
+- En general: después de 1-2 intercambios explorando el tema, ofrécelo siempre
+
+EJERCICIOS (un paso a la vez, espera confirmación entre cada paso):
+- Respiración 4-7-8: inhala 4s, sostén 7s, exhala 8s — repite 3 veces
 - Grounding 5 sentidos: 5 ves, 4 tocas, 3 escuchas, 2 hueles, 1 saboras
-- Relajación muscular progresiva: tensión y relajación de grupos musculares
-- Meditación guiada: observación de respiración y pensamientos
-- Visualización del lugar seguro: crear y explorar un espacio mental tranquilo
+- Relajación muscular progresiva: tensionar y soltar grupos musculares
+- Meditación guiada: observar respiración y dejar pasar pensamientos
+- Visualización del lugar seguro: crear un espacio mental tranquilo
 
-TEMAS QUE MANEJAS:
-- Estrés y agobio académico (exámenes, materias, maestros)
-- Ansiedad y nervios
-- Tristeza, duelo y pérdidas
-- Soledad y problemas de relaciones
-- Autoestima e inseguridad
-- Problemas de sueño
-- Manejo del tiempo y procrastinación
+EMOJIS:
+Úsalos para transmitir emoción real, como un amigo por WhatsApp. Cuando algo es difícil: 😔 💜. Cuando das ánimos: 💪 ✨. Cuando te sorprende algo: 😮. Cuando hay buenas noticias: 🥳. No los fuerces ni los pongas en cada oración.
 
-CRISIS — MUY IMPORTANTE:
-Si el usuario menciona suicidio, hacerse daño, no querer vivir, o cualquier señal de riesgo inmediato, SIEMPRE incluye este número en tu respuesta:
-📞 Línea de la Vida: 800 290 0024 (gratuita, 24 horas, confidencial)
+TEMAS: estrés académico, ansiedad, tristeza y duelo, soledad, autoestima, sueño, tiempo, relaciones.
 
-LÍMITES CLAROS:
-- No diagnosticas enfermedades mentales
-- No recetas medicamentos
-- Si la situación supera tu rol, recomiendas buscar al psicólogo del IPN o la Línea de la Vida
-- Nunca inventas información médica
+CRISIS - MÁXIMA PRIORIDAD:
+Si alguien menciona suicidio, hacerse daño o no querer vivir, responde con mucha empatía e incluye siempre:
+📞 Línea de la Vida: 800 290 0024 (gratuita, 24h, confidencial)
 
-FORMATO:
-- Respuestas conversacionales y cortas (2-4 oraciones máximo, a menos que estés guiando un ejercicio)
-- Usa emojis con moderación y naturalidad 💜
-- Cuando guías ejercicios, da UN paso a la vez y espera confirmación antes de continuar
-- Nunca respondas en inglés aunque el usuario escriba en inglés — siempre en español`;
+VIOLENCIA - TAMBIÉN PRIORITARIO:
+Si alguien menciona violencia física, sexual, psicológica o de pareja (que le peguen, que le griten constantemente, abuso, acoso, que le obliguen a hacer algo, que tengan miedo de alguien cercano), responde con empatía, hazle saber que NO está solo/a y que lo que le pasa NO es su culpa. Incluye siempre estos contactos:
+📞 CNDH (Comisión Nacional de Derechos Humanos): 800 202 0068 (gratuita, 24h)
+📞 SAPTEL (apoyo emocional y crisis): 55 5259 8121 (24h)
+📞 Línea Mujeres CDMX (violencia de género): 800 290 0024
+💬 También puedes orientarle a acudir al Departamento de Bienestar Estudiantil del IPN o a un profesor/a de confianza.
+
+Frases que pueden indicar violencia: "me pega", "me golpea", "me obliga", "me amenaza", "tengo miedo de", "me acosa", "abuso", "me fuerzan", "no me dejan", "me controla", "me insulta siempre", "siento que es mi culpa".
+
+NO HACES:
+- No diagnosticas ni recetas medicamentos
+- No inventas datos del usuario
+- No respondes en inglés, siempre en español
+- No escribes más de 3-4 oraciones (salvo en ejercicios guiados)`;
+}
+
+// ─── EXTRACCIÓN DE NOMBRE Y EDAD DESDE EL MENSAJE ────────────────────────────
+async function extraerPreferencias(userMessage, GROQ_API_KEY) {
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        max_tokens: 60,
+        temperature: 0,
+        messages: [{
+          role: "system",
+          content: `Extrae nombre y edad de un mensaje. Responde SOLO con JSON válido sin explicación. Formato: {"nombre": "string o null", "edad": número o null}. Si no hay nombre claro, nombre=null. Si no hay edad, edad=null. Ejemplos: "me llamo Ana" -> {"nombre":"Ana","edad":null}. "tengo 20 años y me llamo Carlos" -> {"nombre":"Carlos","edad":20}. "hola" -> {"nombre":null,"edad":null}.`
+        }, {
+          role: "user",
+          content: userMessage
+        }]
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content?.trim();
+    return text ? JSON.parse(text) : null;
+  } catch { return null; }
+}
 
 app.post("/api/chat/bot", authMiddleware, async (req, res) => {
   try {
-    const { message, conversationId, mood, historial } = req.body;
+    const { message, conversationId, mood } = req.body;
     if (!message?.trim())
       return res.status(400).json({ success: false, message: "Mensaje vacío" });
 
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
+    const boleta = req.user.boleta;
 
-    // Si no hay Groq API key, usar el bot propio como fallback
+    // Fallback al bot propio si no hay API key
     if (!GROQ_API_KEY) {
-      console.warn("⚠️  GROQ_API_KEY no configurada, usando bot propio");
       const { getBotReply } = require("./bot");
       const reply = await getBotReply(message, String(conversationId || "default"), mood || null);
       return res.json({ success: true, reply });
     }
 
-    // Obtener o inicializar historial de esta conversación
+    // ── Cargar preferencias del usuario desde la BD ───────────────────────────
+    let prefs = null;
+    if (boleta) {
+      const [rows] = await db.query(
+        "SELECT nombre_chat, edad FROM preferencias_chat WHERE boleta=?", [boleta]
+      );
+      prefs = rows.length > 0 ? rows[0] : null;
+      console.log("📋 Prefs cargadas para", boleta, ":", prefs);
+    }
+
+    // ── Intentar extraer nombre/edad SOLO si ambos faltan ───────────────────
+    const faltaNombre = !prefs?.nombre_chat;
+    const faltaEdad   = !prefs?.edad;
+
+    // Solo extraer si faltan datos Y el mensaje parece una respuesta personal
+    if (boleta && faltaNombre && faltaEdad && message.trim().length > 2) {
+      const extraido = await extraerPreferencias(message, GROQ_API_KEY);
+      console.log("🔍 Extracción:", extraido);
+
+      if (extraido) {
+        // Validar que el nombre sea razonable (1-2 palabras, no una frase)
+        const nombreValido = extraido.nombre &&
+          extraido.nombre.split(' ').length <= 3 &&
+          extraido.nombre.length <= 30 &&
+          !extraido.nombre.toLowerCase().includes('dije') &&
+          !extraido.nombre.toLowerCase().includes('sé') &&
+          !extraido.nombre.toLowerCase().includes('ya');
+
+        const nuevoNombre = nombreValido ? extraido.nombre : null;
+        const nuevaEdad   = (extraido.edad && extraido.edad > 14 && extraido.edad < 100)
+          ? extraido.edad : null;
+
+        if (nuevoNombre || nuevaEdad) {
+          await db.query(
+            "INSERT INTO preferencias_chat (boleta, nombre_chat, edad) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE nombre_chat = IF(nombre_chat IS NULL, ?, nombre_chat), edad = IF(edad IS NULL, ?, edad)",
+            [boleta, nuevoNombre || null, nuevaEdad || null, nuevoNombre || null, nuevaEdad || null]
+          );
+          prefs = { nombre_chat: nuevoNombre, edad: nuevaEdad };
+          console.log("💾 Preferencias guardadas:", prefs);
+        }
+      }
+    }
+
+    // ── Historial en memoria ──────────────────────────────────────────────────
     const convKey = String(conversationId || "default");
     if (!chatHistorials.has(convKey)) chatHistorials.set(convKey, []);
     const messages = chatHistorials.get(convKey);
 
-    // Agregar contexto del mood del diario al system prompt si existe
-    let systemPrompt = SYSTEM_PROMPT;
-    if (mood) {
-      const moodLabels = {
-        euforico:'eufórico/a', contento:'contento/a', tranquilo:'tranquilo/a',
-        neutral:'neutral', ansioso:'ansioso/a', frustrado:'frustrado/a',
-        triste:'triste', solitario:'solitario/a', agobiado:'agobiado/a', desesperado:'desesperado/a'
-      };
-      systemPrompt += `\n\nCONTEXTO ADICIONAL: El último registro del diario emocional del usuario indica que se ha sentido "${moodLabels[mood] || mood}". Toma esto en cuenta para personalizar tu respuesta, pero no lo menciones directamente a menos que sea relevante o el usuario lo traiga a la conversación.`;
+    // ── Primer mensaje con prefs completas: saludar sin pasar por Groq ────────
+    // Esto evita que el modelo pregunte nombre/edad que ya conocemos
+    if (prefs?.nombre_chat && prefs?.edad && messages.length === 0) {
+      const saludos = [
+        `Hola ${prefs.nombre_chat}! 😊 Que bueno que estas aqui. Como te has sentido hoy?`,
+        `Hey ${prefs.nombre_chat}! Me alegra verte por aqui. Como estas? Que te trae hoy?`,
+        `Hola! Como estas ${prefs.nombre_chat}? Aqui para lo que necesites. Que paso?`,
+        `Que bueno que escribes ${prefs.nombre_chat} 😊 Como va todo? Hay algo que quieras platicar?`,
+      ];
+      const saludoAuto = saludos[Math.floor(Math.random() * saludos.length)];
+      messages.push(
+        { role: "user",      content: message },
+        { role: "assistant", content: saludoAuto }
+      );
+      return res.json({ success: true, reply: saludoAuto });
     }
+
+    // ── Construir system prompt con contexto del usuario ─────────────────────
+    const systemPrompt = buildSystemPrompt(prefs, mood);
 
     // Agregar mensaje del usuario al historial
     messages.push({ role: "user", content: message });
-
-    // Limitar historial a los últimos 20 mensajes para no exceder tokens
     const recentMessages = messages.slice(-20);
 
-    // Llamar a la API de Groq
+    // ── Llamar a Groq ─────────────────────────────────────────────────────────
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
       body: JSON.stringify({
         model:       "llama-3.1-8b-instant",
         messages:    [{ role: "system", content: systemPrompt }, ...recentMessages],
@@ -1501,7 +1641,6 @@ app.post("/api/chat/bot", authMiddleware, async (req, res) => {
     if (!groqRes.ok) {
       const err = await groqRes.text();
       console.error("❌ Groq error:", groqRes.status, err);
-      // Fallback al bot propio si Groq falla
       const { getBotReply } = require("./bot");
       const reply = await getBotReply(message, convKey, mood || null);
       return res.json({ success: true, reply });
@@ -1511,14 +1650,12 @@ app.post("/api/chat/bot", authMiddleware, async (req, res) => {
     const reply = groqData.choices?.[0]?.message?.content?.trim()
       || "Lo siento, tuve un problema al responder. ¿Puedes intentarlo de nuevo?";
 
-    // Guardar respuesta en el historial
     messages.push({ role: "assistant", content: reply });
 
     return res.json({ success: true, reply });
 
   } catch (e) {
     console.error("❌ /api/chat/bot:", e.message);
-    // Fallback al bot propio si hay error inesperado
     try {
       const { getBotReply } = require("./bot");
       const reply = await getBotReply(
